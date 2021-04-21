@@ -1,0 +1,136 @@
+<?php
+require_once ROOT_PATH . "/app/config/db.php";
+require_once ROOT_PATH . "/app/helpers/Redirect.php";
+require_once ROOT_PATH . "/app/helpers/Sanitize.php";
+require_once ROOT_PATH . "/app/Requests/FormRequests.php";
+
+$errors = array();
+$username = '';
+$email = '';
+
+
+
+// SIGN UP
+if (isset($_POST['signup-btn'])) {
+  unset($_POST['signup-btn']);
+  $request = sanitize($_POST, 'post');
+  $rules = [
+    'username' => [RULE_REQUIRED, [RULE_UNIQUE, 'unique' => 'username', 'table' => 'users']],
+    'email' => [RULE_REQUIRED, RULE_EMAIL, [RULE_UNIQUE, 'unique' => 'email', 'table' => 'users']],
+    'password' => [RULE_REQUIRED, [RULE_MIN, 'min' => 8], [RULE_MAX, 'max' => 24]],
+    'passwordConf' => [RULE_REQUIRED, [RULE_MATCH, 'match' => 'password']]
+  ];
+  $errors = validate($request, $rules);
+
+  if (count($errors) === 0) {
+    $request['password'] = password_hash($request['password'], PASSWORD_DEFAULT);
+    unset($request['passwordConf']);
+    $token = bin2hex(random_bytes(50));
+    $emailValidation = ['verified' => 0, 'token' => $token];
+    $data = array_merge($request,  $emailValidation);
+    $userId = create('users', $data);
+    $userData = selectOne('users', ['id' => $userId]);
+
+    if ($userData) {
+      sendVerificationEmail($userData['email'], $userData['username'], $userData['token']);
+      redirectWithMessage('/', ['success' => 'Account Created Successfully a verification link was sent to the user']);
+    }
+  }
+  $username = $request['username'];
+  $email = $request['email'];
+}
+
+// LOG IN
+if (isset($_POST['login-btn'])) {
+  unset($_POST['login-btn']);
+  $request = sanitize($_POST, 'post');
+  $rules = [
+    'email' => [RULE_REQUIRED],
+    'password' => [RULE_REQUIRED],
+  ];
+  $errors = validate($request, $rules);
+  if (count($errors) === 0) {
+    $user = selectOne('users', ['email' => $request['email']]);
+    if ($user) {
+      (password_verify($request['password'], $user['password']))
+        ? login($user, 'Welcome Back!  😁')
+        : $errors['password'] = 'Invalid password';
+    } else {
+      $errors['email'] = 'User with email doesn\'t exist';
+    }
+  }
+  $email = $request['email'];
+}
+
+//login function
+function login($user, $message)
+{
+  $_SESSION['id'] = $user['id'];
+  $_SESSION['profile_image'] = $user['profile_image'];
+  $_SESSION['username'] = $user['username'];
+  $_SESSION['email'] = $user['email'];
+  redirectWithMessage('admin/index', ['success' => $message]);
+}
+
+//account verification token
+if (isset($_GET['token'])) {
+  $token = $_GET['token'];
+  $user = selectOne('users', ['token' => $token]);
+  if ($user) {
+    $res = update('users', 'token', $token, ['verified' => 1]);
+    if ($res > 0) {
+      $user = selectOne('users', ['token' => $token]);
+      login($user, 'Your email has been verified!');
+    }
+  } else {
+    redirectWithMessage('/', ['error' => 'User not found']);
+  }
+}
+
+// FORGOT PASSWORD
+
+//send email
+if (isset($_POST['forgot-password-btn'])) {
+  unset($_POST['forgot-password-btn']);
+  $request = sanitize($_POST, 'post');
+  $rules = [
+    'email' => [RULE_REQUIRED, RULE_EMAIL, [RULE_EXISTS, 'exists' => 'email', 'table' => 'users']],
+  ];
+  $errors = validate($request, $rules);
+  if (count($errors) === 0) {
+    $user = selectOne('users', ['email' => $request['email']]);
+    $userToken = $user['token'];
+    sendPasswordResetLink($request['email'], $userToken);
+    redirectWithMessage('forgot-password', ['success' => 'We\'ve successfully sent a reset password link to your email address. If not found, please check your spam folder']);
+  }
+}
+
+//password-reset token
+if (isset($_GET['password-token'])) {
+  $passwordToken = $_GET['password-token'];
+  $user = selectOne('users', ['token' => $passwordToken]);
+  $_SESSION['email'] = $user['email'];
+  redirect('reset-password');
+}
+
+//Reset the password
+if (isset($_POST['reset-password-btn'])) {
+  unset($_POST['reset-password-btn']);
+  $request = sanitize($_POST, 'post');
+  $rules = [
+    'password' => [RULE_REQUIRED, [RULE_MIN, 'min' => 8], [RULE_MAX, 'max' => 24]],
+    'passwordConf' => [RULE_REQUIRED, [RULE_MATCH, 'match' => 'password']]
+  ];
+
+  $errors = validate($request, $rules);
+  $request['password'] = password_hash($request['password'], PASSWORD_DEFAULT);
+  unset($request['passwordConf']);
+  $email = $_SESSION['email'];
+  if (count($errors) === 0) {
+    $res = update('users', 'email',  $email, $request);
+    if ($res > 0) {
+      $user = selectOne('users', ['email' => $email]);
+      login($user, 'Password recovered successfully');
+    }
+  }
+}
