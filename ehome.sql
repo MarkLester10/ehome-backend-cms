@@ -3,7 +3,7 @@
 -- https://www.phpmyadmin.net/
 --
 -- Host: localhost:3306
--- Generation Time: Apr 20, 2021 at 05:47 AM
+-- Generation Time: Apr 21, 2021 at 10:11 AM
 -- Server version: 5.7.24
 -- PHP Version: 7.4.16
 
@@ -34,18 +34,33 @@ CREATE TABLE `categories` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
+-- --------------------------------------------------------
+
 --
--- Dumping data for table `categories`
+-- Table structure for table `products`
 --
 
-INSERT INTO `categories` (`id`, `name`, `slug`, `created_at`) VALUES
-(2, 'Electrical &#38; Lighting Fixtures', 'electrical-lighting-fixtures', '2021-04-19 17:11:15'),
-(5, 'Home Accesories', 'home-accesories', '2021-04-19 17:31:08'),
-(6, 'Hardware', 'hardware', '2021-04-19 17:31:15'),
-(9, 'Plumbing', 'plumbing', '2021-04-19 17:32:15'),
-(10, 'Construction Materials', 'construction-materials', '2021-04-19 17:32:30'),
-(11, 'Solar Light ', 'solar-light', '2021-04-19 17:33:08'),
-(12, 'Furniture', 'furniture', '2021-04-20 03:53:18');
+CREATE TABLE `products` (
+  `id` int(11) NOT NULL,
+  `subcategory_id` int(11) NOT NULL,
+  `category_id` int(11) NOT NULL,
+  `slug` varchar(255) NOT NULL,
+  `tag` varchar(255) NOT NULL,
+  `name` varchar(255) NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
+
+-- --------------------------------------------------------
+
+--
+-- Table structure for table `product_images`
+--
+
+CREATE TABLE `product_images` (
+  `id` int(11) NOT NULL,
+  `product_id` int(11) NOT NULL,
+  `image` varchar(255) NOT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
 -- --------------------------------------------------------
 
@@ -62,13 +77,6 @@ CREATE TABLE `subcategories` (
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
 
---
--- Dumping data for table `subcategories`
---
-
-INSERT INTO `subcategories` (`id`, `name`, `slug`, `category_id`, `banner`, `created_at`) VALUES
-(9, 'Test Subcategory -updated', 'test-subcategory-updated', 6, '1618897454_4009029.png', '2021-04-20 05:12:58');
-
 -- --------------------------------------------------------
 
 --
@@ -80,14 +88,6 @@ CREATE TABLE `tags` (
   `subcategory_id` int(11) NOT NULL,
   `name` varchar(255) NOT NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1;
-
---
--- Dumping data for table `tags`
---
-
-INSERT INTO `tags` (`id`, `subcategory_id`, `name`) VALUES
-(31, 9, 'plumbing tags'),
-(32, 9, 'tubo');
 
 -- --------------------------------------------------------
 
@@ -125,6 +125,22 @@ ALTER TABLE `categories`
   ADD UNIQUE KEY `slug` (`slug`);
 
 --
+-- Indexes for table `products`
+--
+ALTER TABLE `products`
+  ADD PRIMARY KEY (`id`),
+  ADD UNIQUE KEY `slug` (`slug`),
+  ADD KEY `products_ibfk_1` (`category_id`),
+  ADD KEY `subcategory_id` (`subcategory_id`);
+
+--
+-- Indexes for table `product_images`
+--
+ALTER TABLE `product_images`
+  ADD PRIMARY KEY (`id`),
+  ADD KEY `product_id` (`product_id`);
+
+--
 -- Indexes for table `subcategories`
 --
 ALTER TABLE `subcategories`
@@ -153,19 +169,31 @@ ALTER TABLE `users`
 -- AUTO_INCREMENT for table `categories`
 --
 ALTER TABLE `categories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=13;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=15;
+
+--
+-- AUTO_INCREMENT for table `products`
+--
+ALTER TABLE `products`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=14;
+
+--
+-- AUTO_INCREMENT for table `product_images`
+--
+ALTER TABLE `product_images`
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=104;
 
 --
 -- AUTO_INCREMENT for table `subcategories`
 --
 ALTER TABLE `subcategories`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=10;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=17;
 
 --
 -- AUTO_INCREMENT for table `tags`
 --
 ALTER TABLE `tags`
-  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=33;
+  MODIFY `id` int(11) NOT NULL AUTO_INCREMENT, AUTO_INCREMENT=81;
 
 --
 -- AUTO_INCREMENT for table `users`
@@ -176,6 +204,19 @@ ALTER TABLE `users`
 --
 -- Constraints for dumped tables
 --
+
+--
+-- Constraints for table `products`
+--
+ALTER TABLE `products`
+  ADD CONSTRAINT `products_ibfk_1` FOREIGN KEY (`category_id`) REFERENCES `categories` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+  ADD CONSTRAINT `products_ibfk_2` FOREIGN KEY (`subcategory_id`) REFERENCES `subcategories` (`id`) ON DELETE CASCADE ON UPDATE CASCADE;
+
+--
+-- Constraints for table `product_images`
+--
+ALTER TABLE `product_images`
+  ADD CONSTRAINT `product_images_ibfk_1` FOREIGN KEY (`product_id`) REFERENCES `products` (`id`) ON DELETE CASCADE;
 
 --
 -- Constraints for table `subcategories`
